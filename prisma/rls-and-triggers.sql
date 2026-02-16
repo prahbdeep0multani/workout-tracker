@@ -1,5 +1,8 @@
--- Workout Tracker Database Schema
--- Run this in the Supabase SQL editor to set up all tables
+-- ===========================================
+-- ROW LEVEL SECURITY & TRIGGERS
+-- ===========================================
+-- Run this AFTER `prisma db push` to enable RLS and create triggers.
+-- These features are not supported by Prisma and must be applied via SQL.
 
 -- Enable UUID extension
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
@@ -7,25 +10,6 @@ CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 -- ===========================================
 -- PROFILES
 -- ===========================================
-CREATE TABLE profiles (
-  id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  updated_at TIMESTAMPTZ DEFAULT NOW(),
-  name TEXT,
-  age INTEGER,
-  gender TEXT,
-  height NUMERIC, -- in cm
-  weight NUMERIC, -- in kg
-  profile_picture_url TEXT,
-  fitness_level TEXT CHECK (fitness_level IN ('beginner', 'intermediate', 'advanced')),
-  goals TEXT[] DEFAULT '{}',
-  equipment TEXT[] DEFAULT '{}',
-  training_frequency INTEGER, -- days per week
-  limitations TEXT,
-  preferred_duration INTEGER, -- minutes
-  onboarding_completed BOOLEAN DEFAULT FALSE
-);
-
 ALTER TABLE profiles ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view own profile" ON profiles
@@ -67,59 +51,26 @@ CREATE TRIGGER profiles_updated_at
 -- ===========================================
 -- EXERCISES
 -- ===========================================
-CREATE TABLE exercises (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  name TEXT NOT NULL,
-  description TEXT,
-  muscle_groups_primary TEXT[] DEFAULT '{}',
-  muscle_groups_secondary TEXT[] DEFAULT '{}',
-  equipment TEXT[] DEFAULT '{}',
-  difficulty TEXT CHECK (difficulty IN ('beginner', 'intermediate', 'advanced')) DEFAULT 'beginner',
-  instructions TEXT[] DEFAULT '{}',
-  video_url TEXT,
-  image_url TEXT,
-  category TEXT,
-  is_custom BOOLEAN DEFAULT FALSE,
-  created_by UUID REFERENCES profiles(id) ON DELETE SET NULL
-);
-
 ALTER TABLE exercises ENABLE ROW LEVEL SECURITY;
 
--- Everyone can view default exercises
 CREATE POLICY "Anyone can view default exercises" ON exercises
   FOR SELECT USING (is_custom = FALSE);
 
--- Users can view their own custom exercises
 CREATE POLICY "Users can view own custom exercises" ON exercises
   FOR SELECT USING (is_custom = TRUE AND created_by = auth.uid());
 
--- Users can create custom exercises
 CREATE POLICY "Users can create custom exercises" ON exercises
   FOR INSERT WITH CHECK (is_custom = TRUE AND created_by = auth.uid());
 
--- Users can update their own custom exercises
 CREATE POLICY "Users can update own custom exercises" ON exercises
   FOR UPDATE USING (is_custom = TRUE AND created_by = auth.uid());
 
--- Users can delete their own custom exercises
 CREATE POLICY "Users can delete own custom exercises" ON exercises
   FOR DELETE USING (is_custom = TRUE AND created_by = auth.uid());
 
 -- ===========================================
 -- WORKOUTS
 -- ===========================================
-CREATE TABLE workouts (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  created_at TIMESTAMPTZ DEFAULT NOW(),
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  date DATE NOT NULL DEFAULT CURRENT_DATE,
-  name TEXT NOT NULL,
-  duration INTEGER, -- minutes
-  notes TEXT,
-  completed BOOLEAN DEFAULT FALSE
-);
-
 ALTER TABLE workouts ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view own workouts" ON workouts
@@ -137,14 +88,6 @@ CREATE POLICY "Users can delete own workouts" ON workouts
 -- ===========================================
 -- WORKOUT EXERCISES
 -- ===========================================
-CREATE TABLE workout_exercises (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  workout_id UUID NOT NULL REFERENCES workouts(id) ON DELETE CASCADE,
-  exercise_id UUID NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
-  "order" INTEGER NOT NULL DEFAULT 0,
-  notes TEXT
-);
-
 ALTER TABLE workout_exercises ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can manage workout exercises via workout" ON workout_exercises
@@ -155,17 +98,6 @@ CREATE POLICY "Users can manage workout exercises via workout" ON workout_exerci
 -- ===========================================
 -- SETS
 -- ===========================================
-CREATE TABLE sets (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  workout_exercise_id UUID NOT NULL REFERENCES workout_exercises(id) ON DELETE CASCADE,
-  set_number INTEGER NOT NULL DEFAULT 1,
-  reps INTEGER,
-  weight NUMERIC,
-  rest_seconds INTEGER,
-  rpe INTEGER CHECK (rpe >= 1 AND rpe <= 10),
-  completed BOOLEAN DEFAULT FALSE
-);
-
 ALTER TABLE sets ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can manage sets via workout" ON sets
@@ -180,16 +112,6 @@ CREATE POLICY "Users can manage sets via workout" ON sets
 -- ===========================================
 -- PERSONAL RECORDS
 -- ===========================================
-CREATE TABLE personal_records (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  exercise_id UUID NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
-  record_type TEXT CHECK (record_type IN ('max_weight', 'max_reps', 'max_volume')) NOT NULL,
-  value NUMERIC NOT NULL,
-  date DATE NOT NULL DEFAULT CURRENT_DATE,
-  workout_id UUID REFERENCES workouts(id) ON DELETE SET NULL
-);
-
 ALTER TABLE personal_records ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view own PRs" ON personal_records
@@ -207,19 +129,6 @@ CREATE POLICY "Users can delete own PRs" ON personal_records
 -- ===========================================
 -- BODY METRICS
 -- ===========================================
-CREATE TABLE body_metrics (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  date DATE NOT NULL DEFAULT CURRENT_DATE,
-  weight NUMERIC,
-  chest NUMERIC,
-  waist NUMERIC,
-  hips NUMERIC,
-  arms NUMERIC,
-  legs NUMERIC,
-  photo_url TEXT
-);
-
 ALTER TABLE body_metrics ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view own body metrics" ON body_metrics
@@ -237,15 +146,6 @@ CREATE POLICY "Users can delete own body metrics" ON body_metrics
 -- ===========================================
 -- WORKOUT TEMPLATES
 -- ===========================================
-CREATE TABLE workout_templates (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID REFERENCES profiles(id) ON DELETE CASCADE,
-  name TEXT NOT NULL,
-  description TEXT,
-  is_public BOOLEAN DEFAULT FALSE,
-  created_at TIMESTAMPTZ DEFAULT NOW()
-);
-
 ALTER TABLE workout_templates ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view own templates" ON workout_templates
@@ -263,17 +163,6 @@ CREATE POLICY "Users can delete own templates" ON workout_templates
 -- ===========================================
 -- TEMPLATE EXERCISES
 -- ===========================================
-CREATE TABLE template_exercises (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  template_id UUID NOT NULL REFERENCES workout_templates(id) ON DELETE CASCADE,
-  exercise_id UUID NOT NULL REFERENCES exercises(id) ON DELETE CASCADE,
-  "order" INTEGER NOT NULL DEFAULT 0,
-  target_sets INTEGER NOT NULL DEFAULT 3,
-  target_reps INTEGER NOT NULL DEFAULT 10,
-  target_weight NUMERIC,
-  rest_seconds INTEGER
-);
-
 ALTER TABLE template_exercises ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can manage template exercises via template" ON template_exercises
@@ -288,19 +177,6 @@ CREATE POLICY "Users can manage template exercises via template" ON template_exe
 -- ===========================================
 -- WORKOUT PLANS
 -- ===========================================
-CREATE TABLE workout_plans (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  name TEXT NOT NULL,
-  description TEXT,
-  duration_weeks INTEGER NOT NULL DEFAULT 4,
-  difficulty TEXT CHECK (difficulty IN ('beginner', 'intermediate', 'advanced')) NOT NULL,
-  goal TEXT NOT NULL,
-  frequency INTEGER NOT NULL, -- days per week
-  created_by UUID REFERENCES profiles(id) ON DELETE SET NULL,
-  is_system_plan BOOLEAN DEFAULT FALSE,
-  equipment_required TEXT[] DEFAULT '{}'
-);
-
 ALTER TABLE workout_plans ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Anyone can view system plans" ON workout_plans
@@ -315,14 +191,6 @@ CREATE POLICY "Users can create plans" ON workout_plans
 -- ===========================================
 -- PLAN WORKOUTS
 -- ===========================================
-CREATE TABLE plan_workouts (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  plan_id UUID NOT NULL REFERENCES workout_plans(id) ON DELETE CASCADE,
-  day_number INTEGER NOT NULL,
-  workout_template_id UUID NOT NULL REFERENCES workout_templates(id) ON DELETE CASCADE,
-  week_number INTEGER NOT NULL DEFAULT 1
-);
-
 ALTER TABLE plan_workouts ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Anyone can view plan workouts for system plans" ON plan_workouts
@@ -337,16 +205,6 @@ CREATE POLICY "Anyone can view plan workouts for system plans" ON plan_workouts
 -- ===========================================
 -- USER ACTIVE PLANS
 -- ===========================================
-CREATE TABLE user_active_plans (
-  id UUID PRIMARY KEY DEFAULT uuid_generate_v4(),
-  user_id UUID NOT NULL REFERENCES profiles(id) ON DELETE CASCADE,
-  plan_id UUID NOT NULL REFERENCES workout_plans(id) ON DELETE CASCADE,
-  start_date DATE NOT NULL DEFAULT CURRENT_DATE,
-  current_week INTEGER NOT NULL DEFAULT 1,
-  current_day INTEGER NOT NULL DEFAULT 1,
-  completed BOOLEAN DEFAULT FALSE
-);
-
 ALTER TABLE user_active_plans ENABLE ROW LEVEL SECURITY;
 
 CREATE POLICY "Users can view own active plans" ON user_active_plans
@@ -362,15 +220,7 @@ CREATE POLICY "Users can delete own active plans" ON user_active_plans
   FOR DELETE USING (auth.uid() = user_id);
 
 -- ===========================================
--- INDEXES
+-- STORAGE BUCKET (for body metrics photos)
 -- ===========================================
-CREATE INDEX idx_workouts_user_id ON workouts(user_id);
-CREATE INDEX idx_workouts_date ON workouts(date);
-CREATE INDEX idx_workout_exercises_workout_id ON workout_exercises(workout_id);
-CREATE INDEX idx_sets_workout_exercise_id ON sets(workout_exercise_id);
-CREATE INDEX idx_personal_records_user_id ON personal_records(user_id);
-CREATE INDEX idx_personal_records_exercise_id ON personal_records(exercise_id);
-CREATE INDEX idx_body_metrics_user_id ON body_metrics(user_id);
-CREATE INDEX idx_body_metrics_date ON body_metrics(date);
-CREATE INDEX idx_exercises_category ON exercises(category);
-CREATE INDEX idx_exercises_difficulty ON exercises(difficulty);
+-- Run in Supabase Dashboard > Storage or via SQL:
+-- INSERT INTO storage.buckets (id, name, public) VALUES ('body-metrics', 'body-metrics', false);

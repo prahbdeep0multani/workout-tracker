@@ -47,13 +47,18 @@ export default function LoginPage() {
 
     const { data: { user } } = await supabase.auth.getUser();
     if (user) {
+      // Ensure profile exists (fallback if DB trigger didn't fire)
+      await supabase
+        .from("profiles")
+        .upsert({ id: user.id }, { onConflict: "id", ignoreDuplicates: true });
+
       const { data: profile } = await supabase
         .from("profiles")
         .select("onboarding_completed")
         .eq("id", user.id)
         .single();
 
-      if (profile && !profile.onboarding_completed) {
+      if (!profile || !profile.onboarding_completed) {
         router.push("/onboarding");
       } else {
         router.push("/dashboard");
@@ -67,7 +72,7 @@ export default function LoginPage() {
     <>
       <div className="lg:hidden flex items-center gap-2 mb-8">
         <Dumbbell className="h-8 w-8 text-primary" />
-        <span className="text-2xl font-bold">FitTrack</span>
+        <span className="text-2xl font-bold">RepFlow</span>
       </div>
 
       <Card className="border-border/50">

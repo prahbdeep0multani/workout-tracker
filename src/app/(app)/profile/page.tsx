@@ -176,7 +176,7 @@ export default function ProfilePage() {
             <SheetHeader>
               <SheetTitle>Edit Profile</SheetTitle>
             </SheetHeader>
-            <div className="space-y-6 mt-6">
+            <div className="space-y-6 m-6">
               <div className="space-y-4">
                 <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Personal Info</h3>
                 <div className="space-y-2">

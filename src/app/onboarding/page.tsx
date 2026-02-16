@@ -78,7 +78,8 @@ export default function OnboardingPage() {
 
     const { error } = await supabase
       .from("profiles")
-      .update({
+      .upsert({
+        id: user.id,
         name: formData.name || null,
         age: formData.age ? parseInt(formData.age) : null,
         gender: formData.gender || null,
@@ -91,8 +92,7 @@ export default function OnboardingPage() {
         preferred_duration: formData.preferred_duration ? parseInt(formData.preferred_duration) : null,
         limitations: formData.limitations || null,
         onboarding_completed: true,
-      })
-      .eq("id", user.id);
+      }, { onConflict: "id" });
 
     if (error) {
       toast.error("Failed to save profile: " + error.message);
@@ -128,7 +128,7 @@ export default function OnboardingPage() {
         {/* Header */}
         <div className="flex items-center gap-2 mb-8">
           <Dumbbell className="h-8 w-8 text-primary" />
-          <span className="text-2xl font-bold">FitTrack</span>
+          <span className="text-2xl font-bold">RepFlow</span>
         </div>
 
         {/* Progress */}

@@ -42,7 +42,7 @@ export function Sidebar() {
       <div className="p-6">
         <Link href="/dashboard" className="flex items-center gap-2">
           <Dumbbell className="h-8 w-8 text-primary" />
-          <span className="text-2xl font-bold tracking-tight">FitTrack</span>
+          <span className="text-2xl font-bold tracking-tight">RepFlow</span>
         </Link>
       </div>
 

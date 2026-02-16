@@ -38,7 +38,7 @@ export default function ResetPasswordPage() {
     <>
       <div className="lg:hidden flex items-center gap-2 mb-8">
         <Dumbbell className="h-8 w-8 text-primary" />
-        <span className="text-2xl font-bold">FitTrack</span>
+        <span className="text-2xl font-bold">RepFlow</span>
       </div>
 
       <Card className="border-border/50">

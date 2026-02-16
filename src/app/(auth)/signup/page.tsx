@@ -34,7 +34,7 @@ export default function SignupPage() {
     setLoading(true);
 
     const supabase = createClient();
-    const { error } = await supabase.auth.signUp({
+    const { data: signUpData, error } = await supabase.auth.signUp({
       email: data.email,
       password: data.password,
     });
@@ -45,16 +45,22 @@ export default function SignupPage() {
       return;
     }
 
-    toast.success("Account created! Let's set up your profile.");
-    router.push("/onboarding");
-    router.refresh();
+    // Ensure profile row exists (fallback if DB trigger didn't fire)
+    if (signUpData.user) {
+      await supabase
+        .from("profiles")
+        .upsert({ id: signUpData.user.id }, { onConflict: "id" });
+    }
+
+    toast.success("Account created! Check your email to verify.");
+    router.push("/verify-email");
   };
 
   return (
     <>
       <div className="lg:hidden flex items-center gap-2 mb-8">
         <Dumbbell className="h-8 w-8 text-primary" />
-        <span className="text-2xl font-bold">FitTrack</span>
+        <span className="text-2xl font-bold">RepFlow</span>
       </div>
 
       <Card className="border-border/50">

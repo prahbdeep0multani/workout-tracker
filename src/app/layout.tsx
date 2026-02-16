@@ -10,7 +10,7 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "FitTrack - Workout Tracker",
+  title: "RepFlow - Workout Tracker",
   description: "Track your workouts, monitor progress, and get personalized workout plans",
 };
 

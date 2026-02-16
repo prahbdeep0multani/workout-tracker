@@ -399,7 +399,7 @@ INSERT INTO exercises (id, name, description, muscle_groups_primary, muscle_grou
  'Leg Extension',
  'An isolation machine exercise that targets the quadriceps through knee extension.',
  ARRAY['Quadriceps'],
- ARRAY[],
+ ARRAY[''],
  ARRAY['Leg Extension Machine'],
  'beginner',
  ARRAY[
